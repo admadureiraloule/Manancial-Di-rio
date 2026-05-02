@@ -248,6 +248,42 @@ const TEMAS=[...new Set(DB.map(v=>v.tema))].sort();
 function getDayIdx(){const d=Math.floor((Date.now()-new Date("2025-01-01").getTime())/86400000);return((d%DB.length)+DB.length)%DB.length;}
 function fmtDate(){return new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});}
 
+// ── FORMULÁRIO DE NOTA (componente estável, fora do App) ──────
+function NoteForm({eid, initialTitle, initialText, versiculoRef, onSave, onCancel}){
+  const [title, setTitle] = React.useState(initialTitle||"");
+  const [text,  setText]  = React.useState(initialText||"");
+
+  // Sincroniza quando editar uma nota existente
+  React.useEffect(()=>{ setTitle(initialTitle||""); setText(initialText||""); },[eid]);
+
+  return(
+    <div className="card fade-in" style={{border:"1.5px solid rgba(200,169,126,.45)",marginBottom:20}}>
+      <div className="st" style={{marginBottom:12}}>{eid?"Editar":"Nova"} Anotação</div>
+      <div style={{fontSize:".73rem",color:"#8B6645",marginBottom:10,fontFamily:"Lora,serif",fontStyle:"italic"}}>
+        Versículo: <strong>{versiculoRef}</strong>
+      </div>
+      <input
+        className="inp"
+        placeholder="Título (opcional)"
+        value={title}
+        onChange={e=>setTitle(e.target.value)}
+        autoComplete="off"
+      />
+      <textarea
+        className="tarea"
+        rows={5}
+        placeholder="Escreva seus pensamentos e reflexões…"
+        value={text}
+        onChange={e=>setText(e.target.value)}
+      />
+      <div style={{display:"flex",gap:10}}>
+        <button className="btn bo" style={{flex:1}} onClick={onCancel}>Cancelar</button>
+        <button className="btn bp" style={{flex:1}} onClick={()=>onSave(title,text)}>Salvar</button>
+      </div>
+    </div>
+  );
+}
+
 function App(){
   const [tab,setTab]=useState("dia");
   const [cur,setCur]=useState(()=>getDayIdx());
@@ -420,19 +456,22 @@ function App(){
           <button className="btn bp" onClick={()=>{setEid(null);setNt("");setNtit("");setSf(true);}}>+ Nova</button>
         </div>
         {sf&&(
-          <div className="card fade-in" style={{border:"1.5px solid rgba(200,169,126,.45)",marginBottom:20}}>
-            <div className="st" style={{marginBottom:12}}>{eid?"Editar":"Nova"} Anotação</div>
-            <div style={{fontSize:".73rem",color:"#8B6645",marginBottom:10,fontFamily:"Lora,serif",fontStyle:"italic"}}>Versículo: <strong>{v.ref}</strong></div>
-            <input className="inp" placeholder="Título (opcional)" value={ntit} onChange={e=>setNtit(e.target.value)}/>
-            <textarea className="tarea" rows={5} placeholder="Escreva seus pensamentos e reflexões…" value={nt} onChange={e=>setNt(e.target.value)}/>
-            <div style={{display:"flex",gap:10}}>
-              <button className="btn bo" style={{flex:1}} onClick={()=>{setSf(false);setNt("");setNtit("");setEid(null);}}>Cancelar</button>
-              <button className="btn bp" style={{flex:1}} onClick={saveN}>Salvar</button>
-            </div>
-          </div>
+          <NoteForm
+            eid={eid}
+            initialTitle={ntit}
+            initialText={nt}
+            versiculoRef={v.ref}
+            onSave={(title,text)=>{
+              if(!text.trim())return;
+              const id=eid||Date.now().toString();
+              setNotes(n=>({...n,[id]:{id,title:title||`Anotação — ${new Date().toLocaleDateString("pt-BR")}`,text,ref:v.ref,vi:cur,date:new Date().toISOString()}}));
+              setNt("");setNtit("");setEid(null);setSf(false);showT("Anotação salva! ✓");
+            }}
+            onCancel={()=>{setSf(false);setNt("");setNtit("");setEid(null);}}
+          />
         )}
         {list.length===0&&!sf&&(
-          <div className="empty" style={{textAlign:"center",padding:"50px 20px",color:"#8B6645"}}>
+          <div style={{textAlign:"center",padding:"50px 20px",color:"#8B6645"}}>
             <div style={{fontSize:"3rem",marginBottom:14}}>✍️</div>
             <div style={{fontStyle:"italic",fontSize:".9rem",lineHeight:1.75}}>Suas anotações aparecerão aqui.<br/>Registre reflexões sobre os versículos que tocar seu coração.</div>
           </div>
